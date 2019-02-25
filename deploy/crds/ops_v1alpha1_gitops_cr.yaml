@@ -1,0 +1,8 @@
+apiVersion: ops.dac.nokia.com/v1alpha1
+kind: GitOps
+metadata:
+  name: git-ops
+spec:
+  # Add fields here
+  repository: github.com/salkin/gitops-test
+  rootFolder: "base"

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitops-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: gitops-operator
+  template:
+    metadata:
+      labels:
+        name: gitops-operator
+    spec:
+      serviceAccountName: gitops-operator
+      containers:
+        - name: gitops-operator
+          # Replace this with the built image name
+          image: registry.dac.nokia.com/public/gitops-operator
+          ports:
+          - containerPort: 60000
+            name: metrics
+          command:
+          - gitops-conductor
+          imagePullPolicy: Always
+          readinessProbe:
+            exec:
+              command:
+                - stat
+                - /tmp/operator-sdk-ready
+            initialDelaySeconds: 4
+            periodSeconds: 10
+            failureThreshold: 1
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "gitops-conductor"
+      volumes:
+      - name: gitops-config
+        configMap:
+          name: gitops-operator-config
+          optional: true

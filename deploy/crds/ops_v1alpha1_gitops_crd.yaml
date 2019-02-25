@@ -1,0 +1,13 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: gitops.ops.dac.nokia.com
+spec:
+  group: ops.dac.nokia.com
+  names:
+    kind: GitOps
+    listKind: GitOpsList
+    plural: gitops
+    singular: gitops
+  scope: Namespaced
+  version: v1alpha1

@@ -1,0 +1,4 @@
+crds:
+  - group: ops.dac.nokia.com
+    version: v1alpha1
+    kind: gitops
