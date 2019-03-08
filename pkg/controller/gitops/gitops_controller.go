@@ -4,12 +4,13 @@ import (
 	"context"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	opsv1alpha1 "github.com/nokia/gitops-conductor/pkg/apis/ops/v1alpha1"
 	"github.com/nokia/gitops-conductor/pkg/git"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	gitc "gopkg.in/src-d/go-git.v4"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +59,18 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileGitOps{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	interval := os.Getenv("ENSURE_INTERVAL")
+	reEnv := 20
+	if interval != "" {
+		i, err := strconv.Atoi(interval)
+		if err != nil {
+			log.Error(err, "Invalid re ensure interval")
+		} else {
+			reEnv = i
+		}
+
+	}
+	return &ReconcileGitOps{client: mgr.GetClient(), scheme: mgr.GetScheme(), rensureInterval: reEnv}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -94,8 +106,9 @@ var _ reconcile.Reconciler = &ReconcileGitOps{}
 type ReconcileGitOps struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client          client.Client
+	scheme          *runtime.Scheme
+	rensureInterval int
 }
 
 // Reconcile reads that state of the cluster for a GitOps object and makes changes based on the state read
@@ -147,7 +160,7 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 					}, err
 				}
 				dur := time.Now().Sub(lastUpdate)
-				if dur < time.Minute*time.Duration(rensureInterval) {
+				if dur < time.Minute*time.Duration(r.rensureInterval) {
 					//Rensure deployments at least every rensureInterval even if git have not changed
 					return reconcile.Result{}, nil
 				}
