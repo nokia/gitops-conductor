@@ -53,6 +53,8 @@ func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
 	if err != nil && err != gitc.NoErrAlreadyUpToDate {
 		log.Error(err, "Failed to fetch refs", "Branch", branch)
 		return err
+	} else if err != nil && err == gitc.NoErrAlreadyUpToDate {
+		return err
 	}
 	w, err := r.Worktree()
 	if err != nil {
