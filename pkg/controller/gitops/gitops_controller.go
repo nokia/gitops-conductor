@@ -4,12 +4,13 @@ import (
 	"context"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	opsv1alpha1 "github.com/nokia/gitops-conductor/pkg/apis/ops/v1alpha1"
 	"github.com/nokia/gitops-conductor/pkg/git"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	gitc "gopkg.in/src-d/go-git.v4"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +59,18 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileGitOps{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	interval := os.Getenv("ENSURE_INTERVAL")
+	reEnv := 20
+	if interval != "" {
+		i, err := strconv.Atoi(interval)
+		if err != nil {
+			log.Error(err, "Invalid re ensure interval")
+		} else {
+			reEnv = i
+		}
+
+	}
+	return &ReconcileGitOps{client: mgr.GetClient(), scheme: mgr.GetScheme(), rensureInterval: reEnv}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -94,8 +106,9 @@ var _ reconcile.Reconciler = &ReconcileGitOps{}
 type ReconcileGitOps struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client          client.Client
+	scheme          *runtime.Scheme
+	rensureInterval int
 }
 
 // Reconcile reads that state of the cluster for a GitOps object and makes changes based on the state read
@@ -137,18 +150,9 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 	} else {
 		err = git.CheckoutBranch(instance)
 		if err != nil {
-
 			if err == gitc.NoErrAlreadyUpToDate {
-				//Repo upto date, no need for reconile objects
-				lastUpdate, err := time.Parse("15:04:05", instance.Status.Updated)
-				if err != nil {
-					return reconcile.Result{
-						RequeueAfter: (1 * time.Minute),
-					}, err
-				}
-				dur := time.Now().Sub(lastUpdate)
-				if dur < time.Minute*time.Duration(rensureInterval) {
-					//Rensure deployments at least every rensureInterval even if git have not changed
+				if !r.isOverDuration(time.Now(), instance) {
+					log.Info("No git changes waiting for interval")
 					return reconcile.Result{}, nil
 				}
 			} else {
@@ -162,7 +166,28 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 
 	r.ensureDeployments(instance)
 	instance.Status.Updated = time.Now().Format("15:04:05")
+	defer r.updateStatus(instance)
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileGitOps) isOverDuration(now time.Time, instance *opsv1alpha1.GitOps) bool {
+	//Repo upto date, no need for reconile objects
+	if instance.Status.Updated != "" {
+
+		lastUpdate, err := time.Parse("15:04:05", instance.Status.Updated)
+		if err != nil {
+			return true
+		}
+		curTime := now.Format("15:04:05")
+		curTimeDur, err := time.Parse("15:04:05", curTime)
+		dur := curTimeDur.Sub(lastUpdate)
+		if dur < time.Minute*time.Duration(r.rensureInterval) {
+			//Rensure deployments at least every rensureInterval even if git have not changed
+			return false
+		}
+	}
+	return true
+
 }
 
 func folderExist(dir string) bool {
@@ -195,6 +220,9 @@ func (r *ReconcileGitOps) ensureDeployments(cr *opsv1alpha1.GitOps) error {
 			opsCreated.WithLabelValues(cr.Name, cr.Spec.Branch).Inc()
 		}
 
+		if r.filterObject(o) {
+			continue
+		}
 		// Check if there are diffs from the object recreate then
 		err = r.client.Update(context.TODO(), o)
 		if err != nil && errors.IsInvalid(err) {
@@ -213,6 +241,15 @@ func (r *ReconcileGitOps) ensureDeployments(cr *opsv1alpha1.GitOps) error {
 
 	}
 	return nil
+}
+
+func (r *ReconcileGitOps) filterObject(o runtime.Object) bool {
+	switch o.(type) {
+	//Filter service accounts as temporary until using CreateOrUpdate from controllerutil
+	case *corev1.ServiceAccount:
+		return true
+	}
+	return false
 }
 
 func (r *ReconcileGitOps) handleService(cr *opsv1alpha1.GitOps, o runtime.Object) error {
