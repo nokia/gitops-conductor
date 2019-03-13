@@ -208,6 +208,9 @@ func (r *ReconcileGitOps) ensureDeployments(cr *opsv1alpha1.GitOps) error {
 			opsCreated.WithLabelValues(cr.Name, cr.Spec.Branch).Inc()
 		}
 
+		if filterObject(o) {
+			continue
+		}
 		// Check if there are diffs from the object recreate then
 		err = r.client.Update(context.TODO(), o)
 		if err != nil && errors.IsInvalid(err) {
@@ -226,6 +229,15 @@ func (r *ReconcileGitOps) ensureDeployments(cr *opsv1alpha1.GitOps) error {
 
 	}
 	return nil
+}
+
+func (r *ReconcileGitOps) filterObject(o *runtime.Object) bool {
+	switch o.(type) {
+	//Filter service accounts as temporary until using CreateOrUpdate from controllerutil
+	case corev1.ServiceAccount:
+		return true
+	}
+
 }
 
 func (r *ReconcileGitOps) handleService(cr *opsv1alpha1.GitOps, o runtime.Object) error {
