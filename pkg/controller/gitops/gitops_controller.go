@@ -150,18 +150,9 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 	} else {
 		err = git.CheckoutBranch(instance)
 		if err != nil {
-
 			if err == gitc.NoErrAlreadyUpToDate {
-				//Repo upto date, no need for reconile objects
-				lastUpdate, err := time.Parse("15:04:05", instance.Status.Updated)
-				if err != nil {
-					return reconcile.Result{
-						RequeueAfter: (1 * time.Minute),
-					}, err
-				}
-				dur := time.Now().Sub(lastUpdate)
-				if dur < time.Minute*time.Duration(r.rensureInterval) {
-					//Rensure deployments at least every rensureInterval even if git have not changed
+				if !r.isOverDuration(time.Now(), instance) {
+					log.Info("No git changes waiting for interval")
 					return reconcile.Result{}, nil
 				}
 			} else {
@@ -175,7 +166,28 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 
 	r.ensureDeployments(instance)
 	instance.Status.Updated = time.Now().Format("15:04:05")
+	defer r.updateStatus(instance)
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileGitOps) isOverDuration(now time.Time, instance *opsv1alpha1.GitOps) bool {
+	//Repo upto date, no need for reconile objects
+	if instance.Status.Updated != "" {
+
+		lastUpdate, err := time.Parse("15:04:05", instance.Status.Updated)
+		if err != nil {
+			return true
+		}
+		curTime := now.Format("15:04:05")
+		curTimeDur, err := time.Parse("15:04:05", curTime)
+		dur := curTimeDur.Sub(lastUpdate)
+		if dur < time.Minute*time.Duration(r.rensureInterval) {
+			//Rensure deployments at least every rensureInterval even if git have not changed
+			return false
+		}
+	}
+	return true
+
 }
 
 func folderExist(dir string) bool {
@@ -208,7 +220,7 @@ func (r *ReconcileGitOps) ensureDeployments(cr *opsv1alpha1.GitOps) error {
 			opsCreated.WithLabelValues(cr.Name, cr.Spec.Branch).Inc()
 		}
 
-		if filterObject(o) {
+		if r.filterObject() {
 			continue
 		}
 		// Check if there are diffs from the object recreate then
