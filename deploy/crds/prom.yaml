@@ -1,0 +1,8 @@
+apiVersion: ops.dac.nokia.com/v1alpha1
+kind: GitOps
+metadata:
+  name: git-prom
+spec:
+  # Add fields here
+  repository: github.com/coreos/prometheus-operator
+  rootFolder: "example/rbac/prometheus"

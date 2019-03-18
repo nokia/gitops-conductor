@@ -8,4 +8,7 @@ data:
     crds:
     - group: monitoring.coreos.com
       version: v1
-      kind: prometheus
+      kind: Prometheus
+    - group: monitoring.coreos.com
+      version: v1
+      kind: Alertmanager

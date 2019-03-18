@@ -23,8 +23,10 @@ type CrdConfig struct {
 
 func addKnownTypes(scheme *runtime.Scheme, gvk schema.GroupVersionKind) error {
 	log.Info("Registering CRD", "Kind", gvk.Kind, "Group", gvk.Group)
+	typ := &unstructured.Unstructured{}
+	typ.SetGroupVersionKind(gvk)
 	scheme.AddKnownTypeWithName(gvk,
-		&unstructured.Unstructured{},
+		typ,
 	)
 	metav1.AddToGroupVersion(scheme, gvk.GroupVersion())
 	return nil
