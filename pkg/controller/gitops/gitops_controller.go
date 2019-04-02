@@ -133,7 +133,7 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
+	hash := ""
 	if instance.Status.RootFolder == "" || !folderExist(instance.Status.RootFolder) {
 		st, err := git.SetupGit(instance)
 		if err != nil {
@@ -143,12 +143,12 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 		if st != "" {
 			instance.Status.RootFolder = st
-			git.CheckoutBranch(instance)
+			hash, _ = git.CheckoutBranch(instance)
 			defer r.updateStatus(instance)
 			git.Pull(instance)
 		}
 	} else {
-		err = git.CheckoutBranch(instance)
+		hash, err = git.CheckoutBranch(instance)
 		if err != nil {
 			if err == gitc.NoErrAlreadyUpToDate {
 				if !r.isOverDuration(time.Now(), instance) {
@@ -167,6 +167,9 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 	r.ensureDeployments(instance)
 	instance.Status.Updated = time.Now().Format("15:04:05")
 	defer r.updateStatus(instance)
+	if instance.Spec.Reporting != nil {
+		reporting.SendReport(instance.Status, hash)
+	}
 	return reconcile.Result{}, nil
 }
 

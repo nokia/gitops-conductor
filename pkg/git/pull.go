@@ -37,14 +37,14 @@ func Pull(spec *opsv1alpha1.GitOps) error {
 	return err
 }
 
-func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
+func CheckoutBranch(spec *opsv1alpha1.GitOps) (hash, error) {
 	branch := spec.Spec.Branch
 	if branch == "" {
 		branch = "master"
 	}
 	r, err := gitc.PlainOpen(spec.Status.RootFolder)
 	if err != nil {
-		return err
+		return "", err
 	}
 	err = r.Fetch(&gitc.FetchOptions{
 		RefSpecs: []config.RefSpec{"refs/*:refs/*"},
@@ -52,13 +52,13 @@ func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
 	})
 	if err != nil && err != gitc.NoErrAlreadyUpToDate {
 		log.Error(err, "Failed to fetch refs", "Branch", branch)
-		return err
+		return "", err
 	} else if err != nil && err == gitc.NoErrAlreadyUpToDate {
-		return err
+		return "", err
 	}
 	w, err := r.Worktree()
 	if err != nil {
-		return err
+		return "", err
 	}
 	head, err := r.Head()
 	if head.Name() == plumbing.ReferenceName(branch) {
@@ -71,16 +71,16 @@ func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
 		})
 		if err != nil {
 			log.Error(err, "Failed to checkout branch", "Branch", branch)
-			return err
+			return "", err
 		}
 	}
 	//Reset to HEAD
 	err = w.Reset(&gitc.ResetOptions{Mode: gitc.HardReset})
 	if err != nil {
 		log.Error(err, "Failed reset", "Branch", branch)
-		return err
+		return "", err
 	}
-	return nil
+	return hash, nil
 }
 
 //PullTemplates fetches the yaml templates from specified directory. Runs pre-templating if specified by the CRD

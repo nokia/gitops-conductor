@@ -48,6 +48,10 @@ required = [
   # branch = "master" #osdk_branch_annotation
   version = "=v0.5.0" #osdk_version_annotation
 
+[[constraint]] 
+  name = "github.com/hashicorp/go-plugin"
+  revision = "52e1c4730856c1438ced7597c9b5c585a7bd06a2"
+
 [prune]
   go-tests = true
   non-go = true

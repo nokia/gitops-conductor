@@ -22,6 +22,14 @@ type GitOpsSpec struct {
 
 	//Templating defines if templating shall be done pre deploy
 	*Templating `json:"templating,omitempty"`
+
+	//Reporting of updates through third-party plugin using a gRPC go-plugin
+	*Reporting `json:"reporting,omitempty"`
+}
+
+//Reporting contains details about what should be reported and by which plugin
+type Reporting struct {
+	Plugin string `json:"plugin"`
 }
 
 type Templating struct {
