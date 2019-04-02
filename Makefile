@@ -66,7 +66,7 @@ dep:
                 -v /var/run/docker.sock:/var/run/docker.sock \
                 -v "${PWD}":/go/src/github.com/nokia/gitops-conductor \
                 -w "/go/src/github.com/nokia/gitops-conductor" \
-                operator-build_v0.5.0  /bin/bash -c "mkdir -p /tmp/depcache/{sources} && pwd &&  ls -l && dep ensure -v"
+                operator-build_v0.5.0  /bin/bash -c "mkdir -p /tmp/depcache/{sources} && pwd &&  ls -l && dep ensure -v -vendor-only"
 
 k8s:
 	operator-sdk generate k8s
