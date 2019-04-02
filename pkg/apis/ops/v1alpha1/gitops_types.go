@@ -42,6 +42,20 @@ type Templating struct {
 type TemplateDataSource struct {
 	//TemplateDataFile relative to the root dir of repository
 	TemplateDataFile []string `json:"templateDataFile"`
+
+	//BlackListFile
+	BlackListFile string `json:"blacklistFile,omitempty"`
+}
+
+//BlacklistContent is the file content of a blacklist file
+type BlacklistContent struct {
+	//EndDate to stop blacklisting
+	EndDate string `yaml:"endDate"`
+
+	//Identifier from template data to select if a cluster should be blacklisted
+	Identifier string `yaml:"identifier"`
+
+	Values []string `yaml:"values"`
 }
 
 type Executor struct {
