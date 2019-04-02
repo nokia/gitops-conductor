@@ -91,16 +91,15 @@ func PullTemplates(spec *opsv1alpha1.GitOps, dir string, scheme *runtime.Scheme)
 	tmplRoot := dir + spec.Status.RootFolder + "/" + spec.Spec.RootFolder
 
 	if spec.Spec.Templating != nil {
-		if template.IsBlacklisted(spec) {
-			return objs, nil, 0
-		}
 
 		err := template.RunPreExecutor(spec, "")
 		if err != nil {
 			log.Error(err, "Failed to run preTemplating")
 			return []runtime.Object{}, err, 0
 		}
-
+		if template.IsBlacklisted(spec) {
+			return objs, nil, 0
+		}
 		err = template.RunGoTemplate(spec)
 		if err != nil {
 			log.Error(err, "Failed to run templating ")
