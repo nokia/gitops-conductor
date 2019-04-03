@@ -9,6 +9,7 @@ import (
 
 	opsv1alpha1 "github.com/nokia/gitops-conductor/pkg/apis/ops/v1alpha1"
 	"github.com/nokia/gitops-conductor/pkg/git"
+	"github.com/nokia/gitops-conductor/pkg/reporting"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gitc "gopkg.in/src-d/go-git.v4"
@@ -133,7 +134,6 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	hash := ""
 	if instance.Status.RootFolder == "" || !folderExist(instance.Status.RootFolder) {
 		st, err := git.SetupGit(instance)
 		if err != nil {
@@ -143,12 +143,12 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 		}
 		if st != "" {
 			instance.Status.RootFolder = st
-			hash, _ = git.CheckoutBranch(instance)
+			git.CheckoutBranch(instance)
 			defer r.updateStatus(instance)
 			git.Pull(instance)
 		}
 	} else {
-		hash, err = git.CheckoutBranch(instance)
+		err = git.CheckoutBranch(instance)
 		if err != nil {
 			if err == gitc.NoErrAlreadyUpToDate {
 				if !r.isOverDuration(time.Now(), instance) {
@@ -168,7 +168,7 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 	instance.Status.Updated = time.Now().Format("15:04:05")
 	defer r.updateStatus(instance)
 	if instance.Spec.Reporting != nil {
-		reporting.SendReport(instance.Status, hash)
+		reporting.SendReport(instance.Spec.Reporting, "", instance)
 	}
 	return reconcile.Result{}, nil
 }

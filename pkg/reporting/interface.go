@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 
 	plugin "github.com/hashicorp/go-plugin"
-	proto "github.com/nokia/gitops-conductor/plugin"
+	proto "github.com/nokia/gitops-conductor/plugin/proto"
 )
 
 // Handshake is a common handshake that is shared by plugin and host.
@@ -24,7 +24,7 @@ var PluginMap = map[string]plugin.Plugin{
 
 // Reporter is the interface that we're exposing as a plugin.
 type Reporter interface {
-	UpdateResult(githash string) error
+	UpdateResult(githash string, gitroot string) error
 }
 
 // This is the implementation of plugin.Plugin so we can serve/consume this.
@@ -41,11 +41,6 @@ type ReporterGRPCPlugin struct {
 	// Concrete implementation, written in Go. This is only used for plugins
 	// that are written in Go.
 	Impl Reporter
-}
-
-func (p *ReporterGRPCPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
-	proto.RegisterReportServer(s, &GRPCServer{Impl: p.Impl})
-	return nil
 }
 
 func (p *ReporterGRPCPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {

@@ -10,7 +10,7 @@ import (
 
 var log = logf.Log.WithName("controller_reporter")
 
-func SendReport(reporting *v1alpha1.Reporting, hash string) {
+func SendReport(reporting *v1alpha1.Reporting, hash string, ops *v1alpha1.GitOps) {
 
 	// We're a host. Start by launching the plugin process.
 	client := plugin.NewClient(&plugin.ClientConfig{
@@ -26,17 +26,17 @@ func SendReport(reporting *v1alpha1.Reporting, hash string) {
 	// Connect via RPC
 	rpcClient, err := client.Client()
 	if err != nil {
-		log.Error(err)
+		log.Error(err, "Failed to connect plugin")
 		return
 	}
 
 	// Request the plugin
 	raw, err := rpcClient.Dispense("report_grpc")
 	if err != nil {
-		log.Error(err)
+		log.Error(err, "Failed to call gRPC client")
 	}
 
 	reporter := raw.(Reporter)
-	reporter.UpdateResult(hash)
+	reporter.UpdateResult(hash, ops.Status.RootFolder)
 
 }
