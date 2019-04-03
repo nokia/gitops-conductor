@@ -1,0 +1,14 @@
+syntax = "proto3";
+package proto;
+
+message UpdateResult {
+    string githash = 1;
+    string gitRootDir = 2;
+}
+
+
+message Empty {}
+
+service Report {
+    rpc GitUpdate(UpdateResult) returns (Empty);
+}

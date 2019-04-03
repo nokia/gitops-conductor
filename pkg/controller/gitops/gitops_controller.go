@@ -9,6 +9,7 @@ import (
 
 	opsv1alpha1 "github.com/nokia/gitops-conductor/pkg/apis/ops/v1alpha1"
 	"github.com/nokia/gitops-conductor/pkg/git"
+	"github.com/nokia/gitops-conductor/pkg/reporting"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gitc "gopkg.in/src-d/go-git.v4"
@@ -133,7 +134,6 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
 	if instance.Status.RootFolder == "" || !folderExist(instance.Status.RootFolder) {
 		st, err := git.SetupGit(instance)
 		if err != nil {
@@ -167,6 +167,9 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 	r.ensureDeployments(instance)
 	instance.Status.Updated = time.Now().Format("15:04:05")
 	defer r.updateStatus(instance)
+	if instance.Spec.Reporting != nil {
+		reporting.SendReport(instance.Spec.Reporting, "", instance)
+	}
 	return reconcile.Result{}, nil
 }
 
