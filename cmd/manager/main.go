@@ -4,20 +4,25 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
+	"github.com/nokia/gitops-conductor/pkg/apis"
+	"github.com/nokia/gitops-conductor/pkg/controller"
+	"github.com/nokia/gitops-conductor/pkg/crd"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/ready"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/nokia/gitops-conductor/pkg/apis"
-	"github.com/nokia/gitops-conductor/pkg/controller"
-	"github.com/nokia/gitops-conductor/pkg/crd"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,6 +41,45 @@ func printVersion() {
 	log.Info(fmt.Sprintf("operator-sdk Version: %v", sdkVersion.Version))
 }
 
+// ZapLoggerTo returns a new Logger implementation using Zap which logs
+// to the given destination, instead of stderr.  It otherise behaves like
+// ZapLogger.
+func ZapLoggerTo(destWriter io.Writer, development bool) logr.Logger {
+	// this basically mimics New<type>Config, but with a custom sink
+	sink := zapcore.AddSync(destWriter)
+
+	var enc zapcore.Encoder
+	var lvl zap.AtomicLevel
+	var opts []zap.Option
+	if development {
+		encCfg := zap.NewDevelopmentEncoderConfig()
+		enc = zapcore.NewConsoleEncoder(encCfg)
+		lvl = zap.NewAtomicLevelAt(zap.DebugLevel)
+		opts = append(opts, zap.Development(), zap.AddStacktrace(zap.ErrorLevel))
+	} else {
+		encCfg := zap.NewProductionEncoderConfig()
+		encCfg.EncodeTime = zapcore.ISO8601TimeEncoder
+		enc = zapcore.NewJSONEncoder(encCfg)
+		lvl = zap.NewAtomicLevelAt(zap.InfoLevel)
+		opts = append(opts, zap.AddStacktrace(zap.WarnLevel),
+			zap.WrapCore(func(core zapcore.Core) zapcore.Core {
+				return zapcore.NewSampler(core, time.Second, 100, 100)
+			}))
+	}
+	opts = append(opts, zap.AddCallerSkip(1), zap.ErrorOutput(sink))
+	logger := zap.New(zapcore.NewCore(&logf.KubeAwareEncoder{Encoder: enc, Verbose: development}, sink, lvl))
+	logger = logger.WithOptions(opts...)
+	return zapr.NewLogger(logger)
+}
+
+// ZapLogger is a Logger implementation.
+// If development is true, a Zap development config will be used
+// (stacktraces on warnings, no sampling), otherwise a Zap production
+// config will be used (stacktraces on errors, sampling).
+func ZapLogger(development bool) logr.Logger {
+	return ZapLoggerTo(os.Stderr, development)
+}
+
 func main() {
 	flag.Parse()
 
@@ -43,7 +87,7 @@ func main() {
 	// implementing the logr.Logger interface. This logger will
 	// be propagated through the whole operator, generating
 	// uniform and structured logs.
-	logf.SetLogger(logf.ZapLogger(false))
+	logf.SetLogger(ZapLogger(false))
 
 	printVersion()
 
