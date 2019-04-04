@@ -151,9 +151,15 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 		err = git.CheckoutBranch(instance)
 		if err != nil {
 			if err == gitc.NoErrAlreadyUpToDate {
-				if !r.isOverDuration(time.Now(), instance) {
-					log.Info("No git changes waiting for interval")
-					return reconcile.Result{}, nil
+				//If branch is change enforce update even no git changes
+				if instance.Status.Branch != instance.Spec.Branch {
+					instance.Status.Branch = instance.Spec.Branch
+					defer r.updateStatus(instance)
+				} else {
+					if !r.isOverDuration(time.Now(), instance) {
+						log.Info("No git changes waiting for interval")
+						return reconcile.Result{}, nil
+					}
 				}
 			} else {
 				log.Error(err, "GitPull error")

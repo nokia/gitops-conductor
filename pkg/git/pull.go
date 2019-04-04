@@ -54,8 +54,13 @@ func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
 		log.Error(err, "Failed to fetch refs", "Branch", branch)
 		return err
 	} else if err != nil && err == gitc.NoErrAlreadyUpToDate {
+		checkBranch(r, branch)
 		return err
 	}
+	return checkBranch(r, branch)
+}
+
+func checkBranch(r *gitc.Repository, branch string) error {
 	w, err := r.Worktree()
 	if err != nil {
 		return err
@@ -63,6 +68,7 @@ func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
 	head, err := r.Head()
 	if head.Name() == plumbing.ReferenceName(branch) {
 		//Already on correct branch
+		return gitc.NoErrAlreadyUpToDate
 	} else {
 		err = w.Checkout(&gitc.CheckoutOptions{
 			Branch: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branch)),
@@ -91,12 +97,15 @@ func PullTemplates(spec *opsv1alpha1.GitOps, dir string, scheme *runtime.Scheme)
 	tmplRoot := dir + spec.Status.RootFolder + "/" + spec.Spec.RootFolder
 
 	if spec.Spec.Templating != nil {
+
 		err := template.RunPreExecutor(spec, "")
 		if err != nil {
 			log.Error(err, "Failed to run preTemplating")
 			return []runtime.Object{}, err, 0
 		}
-
+		if template.IsBlacklisted(spec) {
+			return objs, nil, 0
+		}
 		err = template.RunGoTemplate(spec)
 		if err != nil {
 			log.Error(err, "Failed to run templating ")

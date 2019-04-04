@@ -60,7 +60,7 @@ func RunGoTemplate(spec *opsv1alpha1.GitOps) error {
 
 	log.Info("Running go templates")
 	outDir := spec.Status.RootFolder + "/_output"
-	workDir := getGitRootDir(spec)
+	workDir := GetGitRootDir(spec)
 	t := templater{baseDir: workDir}
 	d, err := getTemplatingSource(spec)
 	if err != nil {
@@ -145,7 +145,7 @@ func RunPreExecutor(spec *opsv1alpha1.GitOps, dir string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel() // The cancel should be deferred so resources are cleaned up
 			cmd := exec.CommandContext(ctx, t.Executor.Exec)
-			cmd.Dir = getGitRootDir(spec)
+			cmd.Dir = GetGitRootDir(spec)
 			if spec.Spec.Templating.SourceFolder != "" {
 				cmd.Dir += "/" + spec.Spec.Templating.SourceFolder
 			}
@@ -173,6 +173,6 @@ func RunPreExecutor(spec *opsv1alpha1.GitOps, dir string) error {
 	return nil
 }
 
-func getGitRootDir(spec *opsv1alpha1.GitOps) string {
+func GetGitRootDir(spec *opsv1alpha1.GitOps) string {
 	return spec.Status.RootFolder + "/" + spec.Spec.RootFolder
 }
