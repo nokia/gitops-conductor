@@ -20,7 +20,7 @@ test:
                  -w "/go/src/github.com/nokia/gitops-conductor" \
                    operator-build_v0.5.0 /bin/bash -c "go test -v ./pkg/..."
 
-ci: builder operator-build
+ci: builder dep operator-build
 
 e2e: bin push
 
@@ -40,7 +40,7 @@ push:
 	docker push $(REGISTRY)/$(IMAGENAME):$(VERSION)
 
 
-operator-build: dep
+operator-build: 
 	docker run --rm \
    -e DEPCACHEDIR=/tmp/depcache \
    -e "http_proxy=${http_proxy}" \

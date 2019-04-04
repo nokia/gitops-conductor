@@ -1,0 +1,18 @@
+syntax = "proto3";
+package proto;
+
+message UpdateResult {
+    string githash = 1;
+    repeated Tags tags = 2;
+}
+
+message Tags {
+  string Key = 1;
+  string Value = 2;
+}
+
+message Empty {}
+
+service Report {
+    rpc GitUpdate(UpdateResult) returns (Empty);
+}

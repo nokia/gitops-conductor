@@ -22,6 +22,18 @@ type GitOpsSpec struct {
 
 	//Templating defines if templating shall be done pre deploy
 	*Templating `json:"templating,omitempty"`
+
+	//Reporting of updates through third-party plugin using a gRPC go-plugin
+	*Reporting `json:"reporting,omitempty"`
+}
+
+//Reporting contains details about what should be reported and by which plugin
+type Reporting struct {
+	//URL is the address of the GRPC server where to send report
+	URL string `json"url"`
+
+	//3rd party collector, the collector shall write its result in /tmp/update_result.yaml
+	Collector string `json:"collector"`
 }
 
 type Templating struct {
@@ -68,6 +80,7 @@ type GitOpsStatus struct {
 	RootFolder string `json:"rootFolder"`
 	Updated    string `json:"lastUpdate"`
 	Hash       string `json:"gitHash"`
+	Branch     string `json:"branch"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -54,8 +54,13 @@ func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
 		log.Error(err, "Failed to fetch refs", "Branch", branch)
 		return err
 	} else if err != nil && err == gitc.NoErrAlreadyUpToDate {
+		checkBranch(r, branch)
 		return err
 	}
+	return checkBranch(r, branch)
+}
+
+func checkBranch(r *gitc.Repository, branch string) error {
 	w, err := r.Worktree()
 	if err != nil {
 		return err
@@ -63,6 +68,7 @@ func CheckoutBranch(spec *opsv1alpha1.GitOps) error {
 	head, err := r.Head()
 	if head.Name() == plumbing.ReferenceName(branch) {
 		//Already on correct branch
+		return gitc.NoErrAlreadyUpToDate
 	} else {
 		err = w.Checkout(&gitc.CheckoutOptions{
 			Branch: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branch)),
