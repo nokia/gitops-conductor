@@ -66,6 +66,11 @@ func RunGoTemplate(spec *opsv1alpha1.GitOps) error {
 	if err != nil {
 		return err
 	}
+	//Clean the output dir first
+	err := os.RemoveAll(outDir)
+	if err != nil {
+		log.Error(err, "Failed to delete output dir")
+	}
 	err = os.Mkdir(outDir, 0755)
 	if err != nil && !os.IsExist(err) {
 		log.Error(err, "Failed to create output dir")
