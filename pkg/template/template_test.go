@@ -3,9 +3,9 @@ package template
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	opsv1alpha1 "github.com/nokia/gitops-conductor/pkg/apis/ops/v1alpha1"
 	"github.com/nokia/gitops-conductor/tests/utils"
+	"github.com/stretchr/testify/assert"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

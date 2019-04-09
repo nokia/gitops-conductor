@@ -66,12 +66,12 @@ func RunGoTemplate(spec *opsv1alpha1.GitOps) error {
 	if err != nil {
 		return err
 	}
-	//Clean the output dir first
-	err := os.RemoveAll(outDir)
+
+	err = os.RemoveAll(outDir)
 	if err != nil {
-		log.Error(err, "Failed to delete output dir")
+		log.Error(err, "Failed to create output dir")
 	}
-	err = os.Mkdir(outDir, 0755)
+	err = os.MkdirAll(outDir, 0755)
 	if err != nil && !os.IsExist(err) {
 		log.Error(err, "Failed to create output dir")
 		return err
@@ -119,8 +119,8 @@ func (t *templater) templateFile(workDir string, outDir string, file os.FileInfo
 
 //templateDir runs through a directory recursively templating every file on the way down in the tree
 func (t *templater) templateDir(workDir string, outDir string, d map[string]interface{}) {
-	log.Info("templating", "dir", workDir)
-	err := os.Mkdir(outDir, 0755)
+	log.Info("templating", "dir", workDir, "output", outDir)
+	err := os.MkdirAll(outDir, 0755)
 	if err != nil && !os.IsExist(err) {
 		log.Error(err, "Failed to create output dir")
 		return
