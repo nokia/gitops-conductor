@@ -67,6 +67,20 @@ func RunGoTemplate(spec *opsv1alpha1.GitOps) error {
 		return err
 	}
 
+	// Create a new context and add a timeout to it
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+	cmd := exec.CommandContext(ctx, "rm")
+	cmd.Dir = spec.Status.RootFolder
+
+	a := []string{"rm", "-rf", "_output"}
+	cmd.Args = a
+
+	_, err = cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		log.Error(err, "Command timed out")
+	}
+
 	err = os.MkdirAll(outDir, 0755)
 	if err != nil && !os.IsExist(err) {
 		log.Error(err, "Failed to create output dir")
@@ -116,11 +130,7 @@ func (t *templater) templateFile(workDir string, outDir string, file os.FileInfo
 //templateDir runs through a directory recursively templating every file on the way down in the tree
 func (t *templater) templateDir(workDir string, outDir string, d map[string]interface{}) {
 	log.Info("templating", "dir", workDir, "output", outDir)
-	err := os.RemoveAll(outDir + "/")
-	if err != nil {
-		log.Error(err, "Failed to create output dir")
-	}
-	err = os.MkdirAll(outDir, 0755)
+	err := os.MkdirAll(outDir, 0755)
 	if err != nil && !os.IsExist(err) {
 		log.Error(err, "Failed to create output dir")
 		return
