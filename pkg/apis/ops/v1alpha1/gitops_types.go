@@ -77,10 +77,11 @@ type Executor struct {
 
 // GitOpsStatus defines the observed state of GitOps
 type GitOpsStatus struct {
-	RootFolder string `json:"rootFolder"`
-	Updated    string `json:"lastUpdate"`
-	Hash       string `json:"gitHash"`
-	Branch     string `json:"branch"`
+	RootFolder   string `json:"rootFolder"`
+	Updated      string `json:"lastUpdate"`
+	Hash         string `json:"gitHash,omitempty"`
+	Branch       string `json:"branch"`
+	FailedClones int    `json:"failedClones,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

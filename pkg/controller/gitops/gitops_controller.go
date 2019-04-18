@@ -136,7 +136,13 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 	if instance.Status.RootFolder == "" || !folderExist(instance.Status.RootFolder) {
 		st, err := git.SetupGit(instance)
+		defer r.updateStatus(instance)
 		if err != nil {
+			instance.Status.FailedClones += 1
+			if instance.Status.FailedClones > 5 {
+				log.Error(err, "Failing to clone. exit to clean up")
+				os.Exit(2)
+			}
 			return reconcile.Result{
 				RequeueAfter: (1 * time.Minute),
 			}, err
@@ -144,7 +150,6 @@ func (r *ReconcileGitOps) Reconcile(request reconcile.Request) (reconcile.Result
 		if st != "" {
 			instance.Status.RootFolder = st
 			git.CheckoutBranch(instance)
-			defer r.updateStatus(instance)
 			git.Pull(instance)
 		}
 	} else {
