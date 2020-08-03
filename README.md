@@ -25,3 +25,8 @@ A simple example that deploys (and keeps) a busybox pod in your cluster
 ```
 kubectl apply -f deploy/crds/ops_v1alpha1_gitops_cr.yaml
 ```
+
+
+## License
+
+This project is licensed under the BSD-3-Clause license - see the [LICENSE](https://github.com/nokia/gitops-conductor/blob/master/LICENSE).
